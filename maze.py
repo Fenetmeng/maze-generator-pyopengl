@@ -40,7 +40,6 @@ class Cell:
 
         self.visited = False
 
-        # solver states
         self.in_path = False
         self.dead_end = False
 
@@ -48,10 +47,8 @@ class Cell:
         x = start_x + self.col * cell_size
         y = start_y + self.row * cell_size
 
-        # generated cells
         if self.visited:
             glColor3f(0.15, 0.15, 0.15)
-
             glBegin(GL_QUADS)
             glVertex2f(x + 1, y + 1)
             glVertex2f(x + cell_size - 1, y + 1)
@@ -59,10 +56,8 @@ class Cell:
             glVertex2f(x + 1, y + cell_size - 1)
             glEnd()
 
-        # red path
         if self.in_path:
             glColor3f(1, 0, 0)
-
             glBegin(GL_QUADS)
             glVertex2f(x + 8, y + 8)
             glVertex2f(x + cell_size - 8, y + 8)
@@ -70,10 +65,8 @@ class Cell:
             glVertex2f(x + 8, y + cell_size - 8)
             glEnd()
 
-        # blue dead ends
         if self.dead_end:
             glColor3f(0, 0, 1)
-
             glBegin(GL_QUADS)
             glVertex2f(x + 10, y + 10)
             glVertex2f(x + cell_size - 10, y + 10)
@@ -147,6 +140,29 @@ def remove_wall(current, next_cell):
         next_cell.left = False
 
 
+def remove_extra_wall_for_bonus(cell):
+    extra_neighbors = []
+
+    r = cell.row
+    c = cell.col
+
+    if r > 0:
+        extra_neighbors.append(grid[r - 1][c])
+
+    if c < cols - 1:
+        extra_neighbors.append(grid[r][c + 1])
+
+    if r < rows - 1:
+        extra_neighbors.append(grid[r + 1][c])
+
+    if c > 0:
+        extra_neighbors.append(grid[r][c - 1])
+
+    if len(extra_neighbors) > 0:
+        random_neighbor = random.choice(extra_neighbors)
+        remove_wall(cell, random_neighbor)
+
+
 def get_possible_moves(cell):
     moves = []
 
@@ -179,10 +195,6 @@ for r in range(rows):
     grid.append(row_cells)
 
 
-# =========================
-# MAZE GENERATION
-# =========================
-
 current_cell = grid[0][0]
 current_cell.visited = True
 
@@ -190,24 +202,16 @@ stack = []
 
 generation_finished = False
 
-# =========================
-# MAZE SOLVING
-# =========================
-
-solver_started = False
 solver_finished = False
-
 solver_stack = []
 
 start_cell = grid[0][0]
 end_cell = grid[rows - 1][cols - 1]
 
 solve_current = start_cell
-
 visited_solver = set()
 
 clock = pygame.time.Clock()
-
 running = True
 
 while running:
@@ -217,7 +221,7 @@ while running:
             running = False
 
     # =========================
-    # GENERATE MAZE
+    # MAZE GENERATION
     # =========================
 
     if not generation_finished:
@@ -232,6 +236,11 @@ while running:
 
             remove_wall(current_cell, next_cell)
 
+            # BONUS CHALLENGE:
+            # 1 in 20 chance to remove an extra wall and create a cycle
+            if random.randint(1, 20) == 1:
+                remove_extra_wall_for_bonus(current_cell)
+
             current_cell = next_cell
             current_cell.visited = True
 
@@ -243,20 +252,17 @@ while running:
 
             generation_finished = True
 
-            # create entrance and exit
+            # entrance and exit
             start_cell.left = False
             end_cell.right = False
 
     # =========================
-    # SOLVE MAZE
+    # MAZE SOLVING
     # =========================
 
     elif not solver_finished:
 
-        solver_started = True
-
         solve_current.in_path = True
-
         visited_solver.add((solve_current.row, solve_current.col))
 
         if solve_current == end_cell:
@@ -268,7 +274,6 @@ while running:
             possible_moves = []
 
             for move in get_possible_moves(solve_current):
-
                 pos = (move.row, move.col)
 
                 if pos not in visited_solver:
@@ -277,20 +282,17 @@ while running:
             if len(possible_moves) > 0:
 
                 next_move = possible_moves[0]
-
                 solver_stack.append(solve_current)
-
                 solve_current = next_move
 
             elif len(solver_stack) > 0:
 
                 solve_current.dead_end = True
                 solve_current.in_path = False
-
                 solve_current = solver_stack.pop()
 
     # =========================
-    # DRAW
+    # DRAW EVERYTHING
     # =========================
 
     glClear(GL_COLOR_BUFFER_BIT)
@@ -300,7 +302,6 @@ while running:
             grid[r][c].draw()
 
     pygame.display.flip()
-
     clock.tick(25)
 
 pygame.quit()
